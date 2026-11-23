@@ -63,3 +63,27 @@ async def test_get_location_shows_images(mcp):
     )
     out = data(await mcp.tool("get_location", {"location_id": "l1"}))
     assert out["image_count"] == 1 and out["images"][0]["is_primary"]
+
+
+@respx.mock
+async def test_save_place_finds_photos_itself_when_none_given(mcp):
+    respx.get(f"{BASE}/api/places/search/").mock(
+        return_value=httpx.Response(
+            200, json={"results": [{"place_id": "p1", "photos": ["/api/places/photo/?name=a"]}]}
+        )
+    )
+    route = respx.post(f"{BASE}/api/locations/quick-add/").mock(
+        return_value=httpx.Response(201, json={"id": "l1", "name": "X"})
+    )
+    await mcp.tool("save_place_as_location", {"name": "X", "latitude": 1, "longitude": 2, "place_id": "p1"})
+    assert json.loads(route.calls.last.request.content)["photos"] == ["/api/places/photo/?name=a"]
+
+
+@respx.mock
+async def test_save_place_still_saves_when_photo_lookup_fails(mcp):
+    respx.get(f"{BASE}/api/places/search/").mock(return_value=httpx.Response(500, text="boom"))
+    route = respx.post(f"{BASE}/api/locations/quick-add/").mock(
+        return_value=httpx.Response(201, json={"id": "l1", "name": "X"})
+    )
+    await mcp.tool("save_place_as_location", {"name": "X", "latitude": 1, "longitude": 2, "place_id": "p1"})
+    assert "photos" not in json.loads(route.calls.last.request.content)

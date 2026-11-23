@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, Field
 
 from .. import shaping
@@ -18,6 +19,18 @@ class VisitInput(BaseModel):
     )
     end_date: Annotated[str | None, Field(description="ISO date or datetime the visit ended")] = None
     notes: str | None = None
+
+
+async def _photos_for_place(a, place_id: str, name: str, address: str | None) -> list[str] | None:
+    """Best effort: the place's picture addresses, found by searching again. Never blocks the save."""
+    try:
+        found = await a.get("/api/places/search/", params={"q": ", ".join(filter(None, [name, address]))})
+    except ToolError:
+        return None
+    for p in found.get("results", []):
+        if p.get("place_id") == place_id:
+            return (p.get("photos") or [])[:3] or None
+    return None
 
 
 def register(mcp: MCPServer) -> None:
@@ -174,9 +187,12 @@ def register(mcp: MCPServer) -> None:
         ] = None,
     ) -> dict:
         """Save a result from search_places as a location, the way the map's "add" button does (imports details
-        and, when `photos` are given, pictures). Not safe to repeat: run check_duplicate_locations first.
+        and pictures: the place's own photos are fetched automatically when `photos` is left out).
+        Not safe to repeat: run check_duplicate_locations first.
         To add other pictures afterwards use find_images and add_images."""
         a = api(ctx)
+        if place_id and not photos:
+            photos = await _photos_for_place(a, place_id, name, address)
         body = {
             "name": name,
             "latitude": latitude,

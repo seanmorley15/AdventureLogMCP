@@ -25,7 +25,7 @@ async def main() -> int:
         loc = await t.call(
             "save_place_as_location", name=place["name"], latitude=place["latitude"], longitude=place["longitude"],
             place_id=place["place_id"], address=place["address"], category="hiking_area", description=mine,
-            collection_id=col["id"], itinerary_date="2027-05-16", photos=place["photos"], show=500,
+            collection_id=col["id"], itinerary_date="2027-05-16", show=500,
         )  # fmt: skip
         t.cleanup.append(f"/api/locations/{loc['id']}/")
         t.check("new category was created, shown nicely", loc.get("category") == "Hiking Area")
