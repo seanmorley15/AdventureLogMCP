@@ -21,7 +21,7 @@ async def main() -> int:
         found = await t.call("search_places", query="Seneca Rocks West Virginia", limit=1, show=300)
         place = found["results"][0]
         t.check("search_places returns photo addresses", bool(place.get("photos")))
-        mine = "Morning hike: Seneca Rocks Trail to the platform. (my own words)"
+        mine = "A towering quartzite fin in the Potomac Highlands with a trail to the summit. (mine)"
         loc = await t.call(
             "save_place_as_location", name=place["name"], latitude=place["latitude"], longitude=place["longitude"],
             place_id=place["place_id"], address=place["address"], category="hiking_area", description=mine,

@@ -11,7 +11,7 @@ from pydantic import Field
 
 from .. import shaping
 from ..auth import api
-from ._common import category_fields
+from ._common import DESCRIBE, category_fields
 from .collection_items import ChecklistItemInput
 
 EDIT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -35,7 +35,7 @@ def register(mcp: MCPServer) -> None:
         ctx: Context,
         location_id: str,
         name: str | None = None,
-        description: str | None = None,
+        description: Annotated[str | None, Field(description=DESCRIBE)] = None,
         address: str | None = None,
         latitude: Annotated[float | None, Field(ge=-90, le=90)] = None,
         longitude: Annotated[float | None, Field(ge=-180, le=180)] = None,

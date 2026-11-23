@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from .. import shaping
 from ..auth import api
-from ._common import CREATE, CREATE_NEW, PAGE_SIZE, READ_ONLY, category_fields
+from ._common import CREATE, CREATE_NEW, DESCRIBE, PAGE_SIZE, READ_ONLY, category_fields
 
 
 class VisitInput(BaseModel):
@@ -125,8 +125,11 @@ def register(mcp: MCPServer) -> None:
         name: str,
         latitude: Annotated[float | None, Field(ge=-90, le=90)] = None,
         longitude: Annotated[float | None, Field(ge=-180, le=180)] = None,
-        address: Annotated[str | None, Field(description="Human-readable address or area")] = None,
-        description: str | None = None,
+        address: Annotated[
+            str | None,
+            Field(description='Only if the user gave one. Leave it out and AdventureLog fills in "City, Region, US"'),
+        ] = None,
+        description: Annotated[str | None, Field(description=DESCRIBE)] = None,
         category: Annotated[str | None, Field(description="Category name; see list_categories. Created if new")] = None,
         tags: list[str] | None = None,
         rating: Annotated[float | None, Field(ge=0, le=5)] = None,
@@ -138,7 +141,8 @@ def register(mcp: MCPServer) -> None:
             list[VisitInput] | None, Field(description="Past or planned visits. Omit for a wishlist location")
         ] = None,
     ) -> dict:
-        """Save a new location. Coordinates are what put it on the map; if you only have a name, use
+        """Save a new location. Leave `address` out and AdventureLog
+        fills it in as "City, Region, US". Coordinates are what put it on the map; if you only have a name, use
         search_places first to get them. Safe to repeat: the identical call returns the existing location."""
         a = api(ctx)
         fields: dict[str, Any] = {
@@ -170,7 +174,8 @@ def register(mcp: MCPServer) -> None:
         ] = None,
         address: str | None = None,
         description: Annotated[
-            str | None, Field(description="Your own text. It is kept instead of the description imported for the place")
+            str | None,
+            Field(description=DESCRIBE + " It is kept instead of the description imported for the place."),
         ] = None,
         website: str | None = None,
         rating: Annotated[float | None, Field(ge=0, le=5)] = None,

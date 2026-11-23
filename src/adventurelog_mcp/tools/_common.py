@@ -23,3 +23,11 @@ def category_fields(raw: str) -> dict:
     """
     cleaned = re.sub(r"[\s_]+", " ", raw.strip())
     return {"name": cleaned.lower(), "display_name": cleaned if cleaned != cleaned.lower() else cleaned.title()}
+
+
+# What a location's description should say. The location outlives any one collection or plan.
+DESCRIBE = (
+    "1-3 sentences about the place itself: what it is, where, and why it is worth visiting. "
+    "Keep it general and timeless. Do not mention the collection, the plan, the dates or the day it is scheduled for "
+    "(put those in a note or the day plan)."
+)
