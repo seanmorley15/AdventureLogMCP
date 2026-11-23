@@ -18,7 +18,7 @@ Kind = Literal["location", "lodging", "transportation", "note", "checklist"]
 EDIT_SAME = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 DAY = Field(ge=1, description="Day number, 1 = the first day of the plan")
-TIME = Field(description="Clock time HH:MM (24h), e.g. 09:30")
+TIME = Field(description="Clock time HH:MM (24h), e.g. 09:30. Only when the user asked for a time or gave one")
 
 
 def _bucket(item: dict):
@@ -64,6 +64,9 @@ def register(mcp: MCPServer) -> None:
         """Put a record that is already in the collection onto the plan. Give `day` (or `date`) for a day,
         `plan_wide` for the whole plan, or neither to park it in Ideas. Placing a lodging or transportation
         sets its dates from the day. It does not log a visit.
+
+        Leave out start_time and end_time unless the user asked for times or gave them; `order` already sorts the
+        day.
 
         Repeating the call changes nothing, and a record parked in Ideas is moved to the day instead of
         being added twice. To put the same location on a second day, call it again with that day."""

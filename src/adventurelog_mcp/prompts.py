@@ -21,7 +21,8 @@ Work in this order and tell me what you did at each step:
    save_place_as_location (collection_id set). Give each a Markdown description of the place itself only,
    with nothing about this plan, its days or dates. Prefer a realistic number per day, close together.
 4. Add create_lodging, create_transportation, a create_note with practical tips and a create_checklist (packing).
-5. Use get_day_plan, then schedule_item (with start_time) to fill each day; keep days balanced and group nearby
+5. Use get_day_plan, then schedule_item to fill each day in a sensible order (no clock
+   times unless I ask for them); keep days balanced and group nearby
    locations. Leave extras in Ideas.
 6. Finish with get_day_plan and summarise the plan day by day, and what is still not scheduled."""
 

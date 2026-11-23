@@ -31,6 +31,8 @@ AdventureLog is a self-hosted travel log. Vocabulary:
 A location's description is Markdown about the place itself (what it is, what to see or do, facts that always
 hold). It never mentions a trip, collection, plan, day, date, schedule or traveller. Anything specific to a plan
 belongs in a note or the day plan.
+Do not give plan items clock times (start_time/end_time) unless the user asks for them or gives them; order the
+day instead.
 Search before creating, so you do not add duplicates.
 """
 
