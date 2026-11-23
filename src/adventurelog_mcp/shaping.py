@@ -34,6 +34,14 @@ def _name(obj: Any) -> str | None:
     return obj.get("name") if isinstance(obj, dict) else None
 
 
+def place_label(loc: dict) -> str | None:
+    """AdventureLog's own style: 'City, Region, US' (falls back to the stored address)."""
+    country = loc.get("country")
+    code = country.get("country_code") if isinstance(country, dict) else None
+    parts = [_name(loc.get("city")), _name(loc.get("region")), code]
+    return ", ".join(x for x in parts if x) or loc.get("location")
+
+
 def category_name(cat: Any) -> str | None:
     if isinstance(cat, dict):
         return cat.get("display_name") or cat.get("name")
@@ -58,6 +66,7 @@ def location_brief(loc: dict) -> dict:
             "id": loc.get("id"),
             "name": loc.get("name"),
             "category": category_name(loc.get("category")),
+            "where": place_label(loc),
             "address": loc.get("location"),
             "latitude": loc.get("latitude"),
             "longitude": loc.get("longitude"),
