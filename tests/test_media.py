@@ -161,3 +161,15 @@ async def test_a_merely_nearby_place_is_not_reused(mcp):
     )
     out = data(await mcp.tool("create_location", {"name": "X", "latitude": 1, "longitude": 2}))
     assert create.called and not out.get("reused_existing")
+
+
+def test_new_categories_get_a_fitting_emoji():
+    from adventurelog_mcp.tools._common import category_fields, icon_for
+
+    assert icon_for("Hiking Area") == "🥾"
+    assert icon_for("waterfalls") == "💦"
+    assert icon_for("National Park") == "🏞️"  # the longer phrase wins over "park"
+    assert icon_for("Zzz") is None
+    assert category_fields("Museum")["icon"] == "🏛️"
+    assert category_fields("Zzz").get("icon") is None  # no guess: AdventureLog's default applies
+    assert category_fields("Zzz", "🧿")["icon"] == "🧿"  # an emoji the model chose wins

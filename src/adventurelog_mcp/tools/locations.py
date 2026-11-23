@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from .. import shaping
 from ..auth import api
-from ._common import CATEGORY, CREATE, CREATE_NEW, DESCRIBE, PAGE_SIZE, READ_ONLY, resolve_category
+from ._common import CATEGORY, CATEGORY_ICON, CREATE, CREATE_NEW, DESCRIBE, PAGE_SIZE, READ_ONLY, resolve_category
 
 
 class VisitInput(BaseModel):
@@ -166,6 +166,7 @@ def register(mcp: MCPServer) -> None:
             str | None,
             Field(description=CATEGORY),
         ] = None,
+        category_icon: Annotated[str | None, Field(description=CATEGORY_ICON)] = None,
         tags: list[str] | None = None,
         rating: Annotated[float | None, Field(ge=0, le=5)] = None,
         link: str | None = None,
@@ -193,7 +194,7 @@ def register(mcp: MCPServer) -> None:
             "longitude": longitude,
             "location": address,
             "description": description,
-            "category": await resolve_category(a, category) if category else None,
+            "category": await resolve_category(a, category, category_icon) if category else None,
             "tags": tags,
             "rating": rating,
             "link": link,
@@ -225,6 +226,7 @@ def register(mcp: MCPServer) -> None:
             str | None,
             Field(description=CATEGORY),
         ] = None,
+        category_icon: Annotated[str | None, Field(description=CATEGORY_ICON)] = None,
         collection_id: Annotated[str | None, Field(description="Add it to this collection")] = None,
         itinerary_date: Annotated[
             str | None, Field(description="YYYY-MM-DD: also put it on this day of a dated collection")
@@ -259,7 +261,7 @@ def register(mcp: MCPServer) -> None:
             "description": description,
             "website": website,
             "rating": rating,
-            "category": await resolve_category(a, category) if category else None,
+            "category": await resolve_category(a, category, category_icon) if category else None,
             "collection": collection_id,
             "itinerary_date": itinerary_date,
             "photos": photos,

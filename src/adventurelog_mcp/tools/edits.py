@@ -11,7 +11,7 @@ from pydantic import Field
 
 from .. import shaping
 from ..auth import api
-from ._common import CATEGORY, DESCRIBE, resolve_category
+from ._common import CATEGORY, CATEGORY_ICON, DESCRIBE, resolve_category
 from .collection_items import ChecklistItemInput
 
 EDIT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -43,6 +43,7 @@ def register(mcp: MCPServer) -> None:
             str | None,
             Field(description=CATEGORY),
         ] = None,
+        category_icon: Annotated[str | None, Field(description=CATEGORY_ICON)] = None,
         tags: Annotated[list[str] | None, Field(description="The full new list of tags (replaces the old one)")] = None,
         rating: Annotated[float | None, Field(ge=0, le=5)] = None,
         link: str | None = None,
@@ -57,7 +58,7 @@ def register(mcp: MCPServer) -> None:
             location=address,
             latitude=latitude,
             longitude=longitude,
-            category=await resolve_category(api(ctx), category) if category else None,
+            category=await resolve_category(api(ctx), category, category_icon) if category else None,
             tags=tags,
             rating=rating,
             link=link,
