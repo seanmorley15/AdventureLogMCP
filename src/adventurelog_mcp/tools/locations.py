@@ -197,9 +197,10 @@ def register(mcp: MCPServer) -> None:
         if description and data.get("description") != description:
             data = {**data, **await a.patch(f"/api/locations/{data['id']}/", json={"description": description})}
         shaped = shaping.location_full(data)
-        imported = data.get("quick_add_image_import")
-        if isinstance(imported, dict):
-            shaped["photos_imported"] = imported.get("created_count", imported.get("imported"))
+        # The API only reports photos that failed to import; the rest are in `images`.
+        failed = (data.get("quick_add_image_import") or {}).get("failed_count")
+        if failed:
+            shaped["photos_failed"] = failed
         return shaping.compact(shaped)
 
     @mcp.tool(annotations=CREATE)

@@ -17,6 +17,7 @@ from .tools import (
     deletes,
     edits,
     locations,
+    media,
     places,
     world_travel,
 )
@@ -33,7 +34,7 @@ Search before creating, so you do not add duplicates.
 
 def build_server() -> MCPServer:
     mcp = MCPServer("AdventureLog", instructions=INSTRUCTIONS, version=__version__)
-    for module in (account, locations, places, collections, collection_items, day_plan, edits, world_travel):
+    for module in (account, locations, places, collections, collection_items, day_plan, edits, world_travel, media):
         module.register(mcp)
     if get_settings().mcp_allow_destructive:
         deletes.register(mcp)

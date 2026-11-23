@@ -30,7 +30,7 @@ async def main() -> int:
         t.cleanup.append(f"/api/locations/{loc['id']}/")
         t.check("new category was created, shown nicely", loc.get("category") == "Hiking Area")
         t.check("my description was kept", loc.get("description") == mine)
-        t.check("photos were imported", bool(loc.get("photos_imported")))
+        t.check("photos were imported", loc.get("image_count", 0) >= 1 and not loc.get("photos_failed"))
         cats = await t.call("list_categories", show=200)
         t.check("category now listed", any(c["name"] == "hiking area" for c in cats["categories"]))
         again = await t.call(

@@ -42,6 +42,16 @@ def place_label(loc: dict) -> str | None:
     return ", ".join(x for x in parts if x) or loc.get("location")
 
 
+def image(i: dict) -> dict:
+    return compact(
+        {"id": i.get("id"), "url": i.get("image"), "is_primary": i.get("is_primary"), "source": i.get("source")}
+    )
+
+
+def attachment(a: dict) -> dict:
+    return compact({"id": a.get("id"), "name": a.get("name"), "url": a.get("file"), "type": a.get("extension")})
+
+
 def category_name(cat: Any) -> str | None:
     if isinstance(cat, dict):
         return cat.get("display_name") or cat.get("name")
@@ -90,6 +100,9 @@ def location_full(loc: dict) -> dict:
             "city": _name(loc.get("city")),
             "region": _name(loc.get("region")),
             "country": _name(loc.get("country")),
+            "image_count": len(loc.get("images") or []),
+            "images": [image(i) for i in (loc.get("images") or [])[:6] if i],
+            "attachments": [attachment(a) for a in loc.get("attachments") or []],
             "visits": [visit(v) for v in loc.get("visits") or []],
         }
     )
