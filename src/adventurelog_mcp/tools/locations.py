@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from .. import shaping
 from ..auth import api
-from ._common import CREATE, CREATE_NEW, DESCRIBE, PAGE_SIZE, READ_ONLY, category_fields
+from ._common import CATEGORY, CREATE, CREATE_NEW, DESCRIBE, PAGE_SIZE, READ_ONLY, resolve_category
 
 
 class VisitInput(BaseModel):
@@ -130,7 +130,10 @@ def register(mcp: MCPServer) -> None:
             Field(description='Only if the user gave one. Leave it out and AdventureLog fills in "City, Region, US"'),
         ] = None,
         description: Annotated[str | None, Field(description=DESCRIBE)] = None,
-        category: Annotated[str | None, Field(description="Category name; see list_categories. Created if new")] = None,
+        category: Annotated[
+            str | None,
+            Field(description=CATEGORY),
+        ] = None,
         tags: list[str] | None = None,
         rating: Annotated[float | None, Field(ge=0, le=5)] = None,
         link: str | None = None,
@@ -151,7 +154,7 @@ def register(mcp: MCPServer) -> None:
             "longitude": longitude,
             "location": address,
             "description": description,
-            "category": category_fields(category) if category else None,
+            "category": await resolve_category(a, category) if category else None,
             "tags": tags,
             "rating": rating,
             "link": link,
@@ -180,7 +183,8 @@ def register(mcp: MCPServer) -> None:
         website: str | None = None,
         rating: Annotated[float | None, Field(ge=0, le=5)] = None,
         category: Annotated[
-            str | None, Field(description="Category name; created if the user has none by that name")
+            str | None,
+            Field(description=CATEGORY),
         ] = None,
         collection_id: Annotated[str | None, Field(description="Add it to this collection")] = None,
         itinerary_date: Annotated[
@@ -207,7 +211,7 @@ def register(mcp: MCPServer) -> None:
             "description": description,
             "website": website,
             "rating": rating,
-            "category": category_fields(category) if category else None,
+            "category": await resolve_category(a, category) if category else None,
             "collection": collection_id,
             "itinerary_date": itinerary_date,
             "photos": photos,

@@ -63,17 +63,23 @@ def register(mcp: MCPServer) -> None:
             Literal["folder", "plan"],
             Field(
                 description=(
-                    "'folder' groups locations. 'plan' is dated and gets a day-by-day itinerary "
-                    "(give start_date and end_date)"
+                    "'folder' groups locations. 'plan' gets a day-by-day itinerary: give day_count (no dates "
+                    "needed) or start_date and end_date"
                 )
             ),
         ] = "folder",
-        start_date: Annotated[str | None, Field(description="YYYY-MM-DD, for plans")] = None,
+        start_date: Annotated[str | None, Field(description="YYYY-MM-DD, optional for plans")] = None,
         end_date: Annotated[str | None, Field(description="YYYY-MM-DD, for plans")] = None,
+        day_count: Annotated[
+            int | None,
+            Field(ge=1, le=366, description="Plan by day numbers (Day 1, Day 2...) without calendar dates"),
+        ] = None,
         timezone: Annotated[str | None, Field(description="IANA name, e.g. Europe/Lisbon")] = None,
         link: str | None = None,
     ) -> dict:
-        """Create a collection. Check list_collections or search first so you do not make a duplicate.
+        """Create a collection. A plan can be days only ("a 5-day trip", day_count=5, no dates) or dated; dates
+        can be added later with set_plan_length(start_date). Check list_collections or search first so you do
+        not make a duplicate.
         Safe to repeat: the identical call returns the existing collection."""
         a = api(ctx)
         body = a.create_body(
@@ -83,6 +89,7 @@ def register(mcp: MCPServer) -> None:
             type="trip" if type == "plan" else "folder",
             start_date=start_date,
             end_date=end_date,
+            day_count=day_count,
             timezone=timezone,
             link=link,
         )

@@ -87,3 +87,36 @@ async def test_save_place_still_saves_when_photo_lookup_fails(mcp):
     )
     await mcp.tool("save_place_as_location", {"name": "X", "latitude": 1, "longitude": 2, "place_id": "p1"})
     assert "photos" not in json.loads(route.calls.last.request.content)
+
+
+@respx.mock
+async def test_create_location_reuses_a_matching_existing_category(mcp):
+    respx.get(f"{BASE}/api/categories/").mock(
+        return_value=httpx.Response(200, json=[{"name": "hiking area", "display_name": "Hiking Area"}])
+    )
+    route = respx.post(f"{BASE}/api/locations/").mock(return_value=httpx.Response(201, json={"id": "l1", "name": "X"}))
+    await mcp.tool("create_location", {"name": "X", "latitude": 1, "longitude": 2, "category": "hiking_areas"})
+    assert json.loads(route.calls.last.request.content)["category"] == {
+        "name": "hiking area",
+        "display_name": "Hiking Area",
+    }
+
+
+@respx.mock
+async def test_create_location_makes_a_new_category_when_none_fits(mcp):
+    respx.get(f"{BASE}/api/categories/").mock(
+        return_value=httpx.Response(200, json=[{"name": "museum", "display_name": "Museum"}])
+    )
+    route = respx.post(f"{BASE}/api/locations/").mock(return_value=httpx.Response(201, json={"id": "l1", "name": "X"}))
+    await mcp.tool("create_location", {"name": "X", "latitude": 1, "longitude": 2, "category": "waterfall"})
+    assert json.loads(route.calls.last.request.content)["category"]["display_name"] == "Waterfall"
+
+
+@respx.mock
+async def test_a_plan_can_be_made_by_day_count_alone(mcp):
+    route = respx.post(f"{BASE}/api/collections/").mock(
+        return_value=httpx.Response(201, json={"id": "c1", "name": "Iceland", "type": "trip", "day_count": 5})
+    )
+    await mcp.tool("create_collection", {"name": "Iceland", "type": "plan", "day_count": 5})
+    body = json.loads(route.calls.last.request.content)
+    assert body["type"] == "trip" and body["day_count"] == 5 and "start_date" not in body

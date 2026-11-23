@@ -18,8 +18,8 @@ Work in this order and tell me what you did at each step:
 1. search for existing collections and locations about {destination} so you reuse what I already saved.
 2. create_collection as a plan (type "plan") with the dates, then ask me before continuing if anything big is unclear.
 3. Find places with search_places and recommend_nearby; run check_duplicate_locations, then save the good ones with
-   save_place_as_location (collection_id set). Give each a short description of the place itself, not of
-   this plan or day. Prefer a realistic number per day, close together.
+   save_place_as_location (collection_id set). Give each a Markdown description of the place itself only,
+   with nothing about this plan, its days or dates. Prefer a realistic number per day, close together.
 4. Add create_lodging, create_transportation, a create_note with practical tips and a create_checklist (packing).
 5. Use get_day_plan, then schedule_item (with start_time) to fill each day; keep days balanced and group nearby
    locations. Leave extras in Ideas.

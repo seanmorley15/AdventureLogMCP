@@ -28,8 +28,9 @@ AdventureLog is a self-hosted travel log. Vocabulary:
 - A *collection* is a folder of locations and can also be a dated plan with a day-by-day itinerary.
   It also holds lodgings, transportations, notes and checklists. Never call a collection a "trip".
 - A *place* is an external search result (not saved yet); saving one creates a location.
-A location's description is about the place itself (what it is and why it is worth a visit), never about the
-collection, plan, dates or day it is in. Plan-specific details belong in a note or the day plan.
+A location's description is Markdown about the place itself (what it is, what to see or do, facts that always
+hold). It never mentions a trip, collection, plan, day, date, schedule or traveller. Anything specific to a plan
+belongs in a note or the day plan.
 Search before creating, so you do not add duplicates.
 """
 

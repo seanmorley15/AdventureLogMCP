@@ -11,7 +11,7 @@ from pydantic import Field
 
 from .. import shaping
 from ..auth import api
-from ._common import DESCRIBE, category_fields
+from ._common import CATEGORY, DESCRIBE, resolve_category
 from .collection_items import ChecklistItemInput
 
 EDIT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -39,7 +39,10 @@ def register(mcp: MCPServer) -> None:
         address: str | None = None,
         latitude: Annotated[float | None, Field(ge=-90, le=90)] = None,
         longitude: Annotated[float | None, Field(ge=-180, le=180)] = None,
-        category: Annotated[str | None, Field(description="Category name; see list_categories")] = None,
+        category: Annotated[
+            str | None,
+            Field(description=CATEGORY),
+        ] = None,
         tags: Annotated[list[str] | None, Field(description="The full new list of tags (replaces the old one)")] = None,
         rating: Annotated[float | None, Field(ge=0, le=5)] = None,
         link: str | None = None,
@@ -54,7 +57,7 @@ def register(mcp: MCPServer) -> None:
             location=address,
             latitude=latitude,
             longitude=longitude,
-            category=category_fields(category) if category else None,
+            category=await resolve_category(api(ctx), category) if category else None,
             tags=tags,
             rating=rating,
             link=link,
@@ -80,6 +83,9 @@ def register(mcp: MCPServer) -> None:
             Literal["folder", "plan"] | None, Field(description="Turn a folder into a dated plan, or back")
         ] = None,
         start_date: Annotated[str | None, Field(description="YYYY-MM-DD: the new first day of a plan")] = None,
+        day_count: Annotated[
+            int | None, Field(ge=1, le=366, description="With type='plan': make it a day-numbered plan of this length")
+        ] = None,
         link: str | None = None,
         archived: bool | None = None,
         version: Annotated[str | None, VERSION] = None,
@@ -92,6 +98,7 @@ def register(mcp: MCPServer) -> None:
             description=description,
             type=None if type is None else ("trip" if type == "plan" else "folder"),
             start_date=start_date,
+            day_count=day_count,
             link=link,
             is_archived=archived,
         )
