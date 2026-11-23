@@ -205,3 +205,150 @@ def page(data: dict, shaper, page_no: int) -> dict:
             "results": [shaper(x) for x in data.get("results", [])],
         }
     )
+
+
+# --- day plan -------------------------------------------------------------------------------------------
+
+_KIND_KEYS = {
+    "location": "locations",
+    "lodging": "lodging",
+    "transportation": "transportations",
+    "note": "notes",
+    "checklist": "checklists",
+}
+
+
+def _names_by_kind(collection: dict) -> dict[str, dict[str, str]]:
+    """{kind: {record id: name}} from a collection's contents (plan items only carry ids)."""
+    return {
+        kind: {r["id"]: r.get("name") for r in collection.get(key) or [] if r.get("id")}
+        for kind, key in _KIND_KEYS.items()
+    }
+
+
+def _clock(t: str | None) -> str | None:
+    return t[:5] if t else t  # "10:00:00" -> "10:00"
+
+
+def plan_item(item: dict, names: dict[str, dict[str, str]]) -> dict:
+    kind = item.get("content_type")
+    return compact(
+        {
+            "item_id": item.get("id"),
+            "kind": kind,
+            "name": names.get(kind, {}).get(item.get("object_id")),
+            "object_id": item.get("object_id"),
+            "start_time": _clock(item.get("start_time")),
+            "end_time": _clock(item.get("end_time")),
+            "timezone": item.get("timezone"),
+            "optional": item.get("is_optional") or None,
+            "through_day": item.get("span_end_index"),
+            "visit_logged": bool(item.get("logged_visit")) or None,
+        }
+    )
+
+
+def day_plan(plan: dict, collection: dict) -> dict:
+    """The plan as a person reads it: numbered days with named items, Ideas, trip-wide items, and what is
+    in the collection but not placed yet. Empty lists and sections are left out."""
+    names = _names_by_kind(collection)
+    items = sorted(plan.get("itinerary") or [], key=lambda i: i.get("order") or 0)
+    by_day: dict[int, list[dict]] = {}
+    ideas, trip_wide = [], []
+    placed: set[str] = set()
+    for it in items:
+        placed.add(it.get("object_id"))
+        shaped = plan_item(it, names)
+        if it.get("is_global"):
+            trip_wide.append(shaped)
+        elif it.get("day_index") is None:
+            ideas.append(shaped)
+        else:
+            by_day.setdefault(it["day_index"], []).append(shaped)
+    days = [
+        {
+            **compact(
+                {
+                    "day": d.get("index"),
+                    "date": d.get("date"),
+                    "name": d.get("name"),
+                    "description": clip(d.get("description"), 300),
+                }
+            ),
+            "items": by_day.get(d.get("index"), []),
+        }
+        for d in sorted(plan.get("itinerary_days") or [], key=lambda d: d.get("index") or 0)
+    ]
+    unplaced = {
+        kind: [{"id": rid, "name": name} for rid, name in recs.items() if rid not in placed]
+        for kind, recs in names.items()
+    }
+    c = plan.get("collection") or {}
+    return compact(
+        {
+            "collection": {
+                "id": c.get("id") or collection.get("id"),
+                "name": collection.get("name"),
+                "start_date": c.get("start_date"),
+                "end_date": c.get("end_date"),
+                "day_count": c.get("day_count"),
+                "timezone": c.get("timezone"),
+            },
+            "days": days,
+            "ideas": ideas,
+            "trip_wide": trip_wide,
+            "not_scheduled_yet": unplaced,
+        }
+    )
+
+
+def recommendation(r: dict) -> dict:
+    return compact(
+        {
+            "place_id": r.get("place_id"),
+            "name": r.get("name"),
+            "description": clip(r.get("description"), 200),
+            "address": r.get("address"),
+            "latitude": r.get("latitude"),
+            "longitude": r.get("longitude"),
+            "distance_km": r.get("distance_km"),
+            "rating": r.get("rating"),
+            "review_count": r.get("review_count"),
+            "price_level": r.get("price_level"),
+            "type": r.get("primary_type"),
+            "open_now": r.get("is_open_now"),
+            "website": r.get("website"),
+        }
+    )
+
+
+# --- world travel ---------------------------------------------------------------------------------------
+
+
+def country(c: dict) -> dict:
+    return compact(
+        {
+            "code": c.get("country_code"),
+            "name": c.get("name"),
+            "capital": c.get("capital"),
+            "subregion": c.get("subregion"),
+            "regions": c.get("num_regions"),
+            "visited_regions": c.get("num_visits"),
+        }
+    )
+
+
+def region(r: dict, visited: bool | None = None) -> dict:
+    return compact(
+        {
+            "id": r.get("id"),
+            "name": r.get("name"),
+            "cities": r.get("num_cities"),
+            "visited": visited,
+            "territory_of": r.get("territory_country_code"),
+        }
+    )
+
+
+def city(c: dict, visited: bool | None = None) -> dict:
+    return compact({"id": c.get("id"), "name": c.get("name"), "region": c.get("region_name"), "visited": visited})

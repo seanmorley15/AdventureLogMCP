@@ -20,9 +20,13 @@ saved yet.
 | Look up places | `search_places`, `get_place_details`, `check_duplicate_locations` |
 | Create locations | `create_location`, `save_place_as_location`, `log_visit` |
 | Create collections and what is in them | `create_collection`, `add_location_to_collection`, `remove_location_from_collection`, `create_lodging`, `create_transportation`, `create_note`, `create_checklist` |
+| Plan the days of a dated collection | `get_day_plan`, `schedule_item`, `move_plan_item`, `order_day_items`, `set_day_details`, `set_plan_length`, `shift_plan_dates`, `recommend_nearby` |
+| World travel | `list_countries`, `get_country`, `list_regions`, `list_cities`, `mark_region_visited`, `unmark_region_visited`, `mark_city_visited`, `unmark_city_visited`, `sync_visited_regions`, `get_travel_stats` |
 
 Creating is repeat-safe: the record's id is derived from who is asking and exactly what they asked for, so an
-identical repeated call returns the existing record. Coming later: day planning, world travel, edits and deletes.
+identical repeated call returns the existing record. `get_day_plan` shows each day's named items, Ideas (in the collection, no day yet), trip-wide items and what is
+not scheduled yet. `schedule_item` is repeat-safe and moves an Ideas item onto a day instead of duplicating it.
+Coming later: edits and deletes.
 
 ## Connect
 
@@ -63,6 +67,7 @@ See [docker-compose.example.yml](docker-compose.example.yml). The MCP server mus
 ```sh
 uv sync
 uv run pytest
-uv run python scripts/live_smoke.py   # against a real AdventureLog (.env), cleans up after itself
+uv run python scripts/live_smoke.py          # stage 1, against a real AdventureLog (.env), cleans up after itself
+uv run python scripts/live_smoke_stage2.py   # stage 2 (day plan, world travel)
 uv run ruff check . && uv run ruff format --check .
 ```
