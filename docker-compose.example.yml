@@ -1,0 +1,14 @@
+# Add this service next to `app` in AdventureLog's docker-compose.yml.
+services:
+  mcp:
+    image: ghcr.io/seanmorley15/adventurelog-mcp:latest
+    container_name: adventurelog-mcp
+    restart: unless-stopped
+    environment:
+      ADVENTURELOG_URL: http://app:80
+      ADVENTURELOG_PUBLIC_URL: ${SITE_URL:-http://localhost:8015}
+    ports:
+      - "${MCP_HOST_PORT:-8017}:8017"
+    depends_on:
+      app:
+        condition: service_healthy

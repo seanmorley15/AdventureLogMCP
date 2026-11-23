@@ -1,0 +1,41 @@
+[project]
+name = "adventurelog-mcp"
+version = "0.1.0"
+description = "MCP server for AdventureLog: let AI assistants create and plan locations and collections"
+readme = "README.md"
+authors = [
+    { name = "Sean Morley", email = "git@seanmorley.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp>=2.3.0",
+    "pydantic-settings>=2.16.3",
+]
+
+[project.scripts]
+adventurelog-mcp = "adventurelog_mcp.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.12.4,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+    "respx>=0.23.1",
+    "ruff>=0.17.6",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
