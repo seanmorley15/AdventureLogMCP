@@ -7,9 +7,19 @@ from mcp.server.transport_security import TransportSecuritySettings
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from . import __version__
+from . import __version__, prompts
 from .config import get_settings
-from .tools import account, collection_items, collections, day_plan, locations, places, world_travel
+from .tools import (
+    account,
+    collection_items,
+    collections,
+    day_plan,
+    deletes,
+    edits,
+    locations,
+    places,
+    world_travel,
+)
 
 INSTRUCTIONS = """\
 AdventureLog is a self-hosted travel log. Vocabulary:
@@ -23,8 +33,11 @@ Search before creating, so you do not add duplicates.
 
 def build_server() -> MCPServer:
     mcp = MCPServer("AdventureLog", instructions=INSTRUCTIONS, version=__version__)
-    for module in (account, locations, places, collections, collection_items, day_plan, world_travel):
+    for module in (account, locations, places, collections, collection_items, day_plan, edits, world_travel):
         module.register(mcp)
+    if get_settings().mcp_allow_destructive:
+        deletes.register(mcp)
+    prompts.register(mcp)
 
     @mcp.custom_route("/health", methods=["GET"])
     async def health(_: Request) -> JSONResponse:

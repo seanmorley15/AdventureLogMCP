@@ -63,7 +63,7 @@ async def test_get_day_plan_names_items_and_lists_what_is_not_scheduled(mcp):
     ]  # ordered, named, "HH:MM"
     assert out["days"][0]["items"][2]["through_day"] == 2
     assert out["days"][1] == {"day": 2, "date": "2027-06-04", "name": "Sintra"}  # empty lists are left out
-    assert out["ideas"][0]["name"] == "Tower" and out["trip_wide"][0]["name"] == "Tips"
+    assert out["ideas"][0]["name"] == "Tower" and out["plan_wide"][0]["name"] == "Tips"
     assert "not_scheduled_yet" not in out  # everything is placed
 
 

@@ -7,6 +7,8 @@ caller acts as themselves. stdio and single-user setups fall back to ``ADVENTURE
 
 from __future__ import annotations
 
+import json
+from collections.abc import Callable
 from typing import Any
 
 from mcp.server.mcpserver import Context
@@ -57,10 +59,29 @@ class Api:
         body = {k: v for k, v in fields.items() if v is not None}
         return {"id": stable_id(self._key, kind, body), **body}
 
-    async def request(self, method: str, path: str, **kw: Any) -> Any:
+    async def request(
+        self,
+        method: str,
+        path: str,
+        *,
+        version: str | None = None,
+        shape_current: Callable[[dict], Any] | None = None,
+        **kw: Any,
+    ) -> Any:
+        """Call the API. ``version`` is sent as ``If-Match``; if the record has changed since, the tool error
+        carries the record as it is now (through ``shape_current``) so the model can redo its edit."""
+        if version:
+            kw["headers"] = {**kw.get("headers", {}), "If-Match": version}
         try:
             return await self._client.request(method, path, api_key=self._key, **kw)
         except AdventureLogError as e:
+            if e.status == 412 and "current" in e.extra:
+                current = shape_current(e.extra["current"]) if shape_current else e.extra["current"]
+                raise ToolError(
+                    "It changed since you read it, so nothing was saved (code: precondition_failed). "
+                    f"It is now: {json.dumps(current, default=str)}. Check it, then repeat your edit with its new "
+                    f"'version' ({e.etag or 'see the record'})."
+                ) from e
             raise ToolError(e.for_model()) from e
 
     async def get(self, path: str, **kw: Any) -> Any:

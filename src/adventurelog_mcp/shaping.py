@@ -19,6 +19,11 @@ def compact(value: Any) -> Any:
     return value
 
 
+def versioned(shaped: dict, etag: str | None) -> dict:
+    """Add the record's `version`: pass it back to an update_* tool to refuse the edit if it changed meanwhile."""
+    return {**shaped, "version": etag} if etag else shaped
+
+
 def clip(text: str | None, limit: int) -> str | None:
     if not text or len(text) <= limit:
         return text
@@ -249,18 +254,18 @@ def plan_item(item: dict, names: dict[str, dict[str, str]]) -> dict:
 
 
 def day_plan(plan: dict, collection: dict) -> dict:
-    """The plan as a person reads it: numbered days with named items, Ideas, trip-wide items, and what is
+    """The plan as a person reads it: numbered days with named items, Ideas, plan-wide items, and what is
     in the collection but not placed yet. Empty lists and sections are left out."""
     names = _names_by_kind(collection)
     items = sorted(plan.get("itinerary") or [], key=lambda i: i.get("order") or 0)
     by_day: dict[int, list[dict]] = {}
-    ideas, trip_wide = [], []
+    ideas, plan_wide = [], []
     placed: set[str] = set()
     for it in items:
         placed.add(it.get("object_id"))
         shaped = plan_item(it, names)
         if it.get("is_global"):
-            trip_wide.append(shaped)
+            plan_wide.append(shaped)
         elif it.get("day_index") is None:
             ideas.append(shaped)
         else:
@@ -296,7 +301,7 @@ def day_plan(plan: dict, collection: dict) -> dict:
             },
             "days": days,
             "ideas": ideas,
-            "trip_wide": trip_wide,
+            "plan_wide": plan_wide,
             "not_scheduled_yet": unplaced,
         }
     )

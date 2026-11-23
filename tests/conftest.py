@@ -55,8 +55,7 @@ class McpCaller:
         return json.loads(resp.text)["result"]
 
 
-@pytest.fixture
-async def mcp():
+async def _serve():
     app = build_http_app()
     started, stop = asyncio.Event(), asyncio.Event()
 
@@ -75,3 +74,18 @@ async def mcp():
     finally:
         stop.set()
         await task
+
+
+@pytest.fixture
+async def mcp():
+    async for caller in _serve():
+        yield caller
+
+
+@pytest.fixture
+async def mcp_destructive(monkeypatch):
+    """The server as started with MCP_ALLOW_DESTRUCTIVE=true."""
+    monkeypatch.setenv("MCP_ALLOW_DESTRUCTIVE", "true")
+    get_settings.cache_clear()
+    async for caller in _serve():
+        yield caller

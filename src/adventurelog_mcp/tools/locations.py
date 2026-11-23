@@ -73,8 +73,9 @@ def register(mcp: MCPServer) -> None:
     @mcp.tool(annotations=READ_ONLY)
     async def get_location(ctx: Context, location_id: str) -> dict:
         """Get one location in full: description, address, coordinates, tags, rating, visits and the ids of
-        the collections it is in."""
-        return shaping.location_full(await api(ctx).get(f"/api/locations/{location_id}/"))
+        the collections it is in. `version` can be passed to update_location to detect edits made meanwhile."""
+        data, etag = await api(ctx).get(f"/api/locations/{location_id}/", with_etag=True)
+        return shaping.versioned(shaping.location_full(data), etag)
 
     @mcp.tool(annotations=READ_ONLY)
     async def check_duplicate_locations(
@@ -143,7 +144,8 @@ def register(mcp: MCPServer) -> None:
             "collections": [collection_id] if collection_id else None,
             "visits": [v.model_dump(exclude_none=True) for v in visits] if visits else None,
         }
-        return shaping.location_full(await a.post("/api/locations/", json=a.create_body("location", **fields)))
+        data, etag = await a.post("/api/locations/", json=a.create_body("location", **fields), with_etag=True)
+        return shaping.versioned(shaping.location_full(data), etag)
 
     @mcp.tool(annotations=CREATE_NEW)
     async def save_place_as_location(

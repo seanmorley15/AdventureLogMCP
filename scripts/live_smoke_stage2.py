@@ -94,7 +94,7 @@ async def main() -> int:
                     show=100,
                 )
                 await call(
-                    "schedule_item", collection_id=cid, kind="note", object_id=note["id"], trip_wide=True, show=100
+                    "schedule_item", collection_id=cid, kind="note", object_id=note["id"], plan_wide=True, show=100
                 )
                 await call("schedule_item", collection_id=cid, kind="location", object_id=c["id"], show=100)  # Ideas
                 await call("schedule_item", collection_id=cid, kind="location", object_id=c["id"], show=120)  # repeat

@@ -22,9 +22,9 @@ TIME = Field(description="Clock time HH:MM (24h), e.g. 09:30")
 
 
 def _bucket(item: dict):
-    """Where a plan item sits: 'trip_wide', 'ideas', or its day number."""
+    """Where a plan item sits: 'plan_wide', 'ideas', or its day number."""
     if item.get("is_global"):
-        return "trip_wide"
+        return "plan_wide"
     return item.get("day_index") or "ideas"
 
 
@@ -38,7 +38,7 @@ def register(mcp: MCPServer) -> None:
     @mcp.tool(annotations=READ_ONLY)
     async def get_day_plan(ctx: Context, collection_id: str) -> dict:
         """Get the day-by-day plan of a dated collection: each day with its date and ordered, named items
-        (times, optional, multi-day stays), then Ideas (in the collection, no day yet), trip-wide items, and
+        (times, optional, multi-day stays), then Ideas (in the collection, no day yet), plan-wide items, and
         `not_scheduled_yet` (everything in the collection that is not on the plan). Items are the records
         created with create_location, create_lodging and so on, so use their object_id to schedule more."""
         return await _plan(api(ctx), collection_id)
@@ -51,7 +51,7 @@ def register(mcp: MCPServer) -> None:
         object_id: Annotated[str, Field(description="Id of the location/lodging/transportation/note/checklist")],
         day: Annotated[int | None, DAY] = None,
         date: Annotated[str | None, Field(description="YYYY-MM-DD, instead of `day`")] = None,
-        trip_wide: Annotated[bool, Field(description="Not tied to one day (notes and checklists)")] = False,
+        plan_wide: Annotated[bool, Field(description="Not tied to one day (notes and checklists)")] = False,
         start_time: Annotated[str | None, TIME] = None,
         end_time: Annotated[str | None, TIME] = None,
         timezone: Annotated[str | None, Field(description="IANA name for the times")] = None,
@@ -62,7 +62,7 @@ def register(mcp: MCPServer) -> None:
         optional: bool = False,
     ) -> dict:
         """Put a record that is already in the collection onto the plan. Give `day` (or `date`) for a day,
-        `trip_wide` for the whole plan, or neither to park it in Ideas. Placing a lodging or transportation
+        `plan_wide` for the whole plan, or neither to park it in Ideas. Placing a lodging or transportation
         sets its dates from the day. It does not log a visit.
 
         Repeating the call changes nothing, and a record parked in Ideas is moved to the day instead of
@@ -74,7 +74,7 @@ def register(mcp: MCPServer) -> None:
             if not match:
                 raise ToolError(f"{date} is not a day of this plan; use set_plan_length or shift_plan_dates first.")
             day = match["index"]
-        target = "trip_wide" if trip_wide else (day or "ideas")
+        target = "plan_wide" if plan_wide else (day or "ideas")
         existing = [
             i for i in plan.get("itinerary", []) if i.get("content_type") == kind and i.get("object_id") == object_id
         ]
@@ -92,12 +92,12 @@ def register(mcp: MCPServer) -> None:
         if any(_bucket(i) == target for i in existing):
             note = "Already scheduled there; nothing changed."
         elif target != "ideas" and (parked := next((i for i in existing if _bucket(i) == "ideas"), None)):
-            move = {**fields, "is_global": True} if trip_wide else {**fields, "day_index": day, "is_global": False}
+            move = {**fields, "is_global": True} if plan_wide else {**fields, "day_index": day, "is_global": False}
             await a.patch(f"/api/collections/{collection_id}/itinerary-items/{parked['id']}/", json=move)
             note = "Moved from Ideas."
         else:
             body = {"content_type": kind, "object_id": object_id, **fields}
-            if trip_wide:
+            if plan_wide:
                 body["is_global"] = True
             elif day is not None:
                 body["day_index"] = day
@@ -111,7 +111,7 @@ def register(mcp: MCPServer) -> None:
         collection_id: str,
         item_id: Annotated[str, Field(description="item_id from get_day_plan")],
         day: Annotated[int | None, DAY] = None,
-        trip_wide: bool = False,
+        plan_wide: bool = False,
         to_ideas: Annotated[bool, Field(description="Take it off its day and park it in Ideas")] = False,
         order: Annotated[int | None, Field(ge=0, description="Position on the day")] = None,
         start_time: Annotated[str | None, TIME] = None,
@@ -132,7 +132,7 @@ def register(mcp: MCPServer) -> None:
             "is_optional": optional,
         }
         body = {k: v for k, v in body.items() if v is not None}
-        if trip_wide:
+        if plan_wide:
             body["is_global"] = True
         elif to_ideas:
             body.update(day_index=None, is_global=False)
@@ -140,6 +140,20 @@ def register(mcp: MCPServer) -> None:
             body["is_global"] = False
         a = api(ctx)
         await a.patch(f"/api/collections/{collection_id}/itinerary-items/{item_id}/", json=body)
+        return await _plan(a, collection_id)
+
+    @mcp.tool(
+        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False)
+    )
+    async def remove_plan_item(
+        ctx: Context,
+        collection_id: str,
+        item_id: Annotated[str, Field(description="item_id from get_day_plan")],
+    ) -> dict:
+        """Take an item off the plan (the day, Ideas or plan-wide). The location, lodging, note... itself stays
+        in the collection and shows up under not_scheduled_yet; to move it use move_plan_item."""
+        a = api(ctx)
+        await a.delete(f"/api/collections/{collection_id}/itinerary-items/{item_id}/")
         return await _plan(a, collection_id)
 
     @mcp.tool(annotations=EDIT_SAME)
@@ -173,7 +187,7 @@ def register(mcp: MCPServer) -> None:
         ctx: Context,
         collection_id: str,
         day: Annotated[int, DAY],
-        name: Annotated[str | None, Field(description="e.g. 'Sintra day trip'")] = None,
+        name: Annotated[str | None, Field(description="e.g. 'Sintra'")] = None,
         description: str | None = None,
     ) -> dict:
         """Name a day or give it a description."""

@@ -51,7 +51,8 @@ def register(mcp: MCPServer) -> None:
     async def get_collection(ctx: Context, collection_id: str) -> dict:
         """Get a collection with everything in it: its locations (short entries), lodgings, transportations,
         notes and checklists."""
-        return shaping.collection_full(await api(ctx).get(f"/api/collections/{collection_id}/"))
+        data, etag = await api(ctx).get(f"/api/collections/{collection_id}/", with_etag=True)
+        return shaping.versioned(shaping.collection_full(data), etag)
 
     @mcp.tool(annotations=CREATE)
     async def create_collection(
@@ -85,7 +86,8 @@ def register(mcp: MCPServer) -> None:
             timezone=timezone,
             link=link,
         )
-        return shaping.collection_brief(await a.post("/api/collections/", json=body))
+        data, etag = await a.post("/api/collections/", json=body, with_etag=True)
+        return shaping.versioned(shaping.collection_brief(data), etag)
 
     @mcp.tool(annotations=IDEMPOTENT_WRITE)
     async def add_location_to_collection(ctx: Context, location_id: str, collection_id: str) -> dict:

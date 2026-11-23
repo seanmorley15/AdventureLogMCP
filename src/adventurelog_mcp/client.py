@@ -27,8 +27,10 @@ class AdventureLogError(Exception):
         status: int = 0,
         fields: dict[str, Any] | None = None,
         extra: dict[str, Any] | None = None,
+        etag: str | None = None,
     ):
         super().__init__(detail)
+        self.etag = etag  # on a 412, the record's current version
         self.detail = detail
         self.code = code
         self.status = status
@@ -93,8 +95,11 @@ class AdventureLogClient:
         params: dict[str, Any] | None = None,
         json: Any = None,
         headers: dict[str, str] | None = None,
+        with_etag: bool = False,
     ) -> Any:
-        """Call `path` (e.g. ``/api/account/``) as the owner of ``api_key``. Returns parsed JSON, or None for 204."""
+        """Call `path` (e.g. ``/api/account/``) as the owner of ``api_key``. Returns parsed JSON, or None for 204.
+
+        With ``with_etag`` it returns ``(json, etag)``: the record's version, to send back as ``If-Match``."""
         h = {"X-API-Key": api_key, "Accept": "application/json", "Origin": self.settings.origin}
         if headers:
             h.update(headers)
@@ -112,14 +117,14 @@ class AdventureLogClient:
 
         if resp.status_code == 204 or not resp.content:
             if resp.is_success:
-                return None
+                return (None, None) if with_etag else None
         try:
             body = resp.json()
         except ValueError:
             body = None
 
         if resp.is_success:
-            return body
+            return (body, resp.headers.get("etag")) if with_etag else body
 
         if isinstance(body, dict) and "detail" in body:
             extra = {k: v for k, v in body.items() if k not in {"detail", "code", "fields"}}
@@ -129,6 +134,7 @@ class AdventureLogClient:
                 status=resp.status_code,
                 fields=body.get("fields"),
                 extra=extra,
+                etag=resp.headers.get("etag"),
             )
         raise AdventureLogError(
             f"AdventureLog answered HTTP {resp.status_code} with an unexpected body.",
