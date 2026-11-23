@@ -67,6 +67,7 @@ async def test_get_location_shows_images(mcp):
 
 @respx.mock
 async def test_save_place_finds_photos_itself_when_none_given(mcp):
+    respx.post(f"{BASE}/api/locations/check-duplicates/").mock(return_value=httpx.Response(200, json={"matches": []}))
     respx.get(f"{BASE}/api/places/search/").mock(
         return_value=httpx.Response(
             200, json={"results": [{"place_id": "p1", "photos": ["/api/places/photo/?name=a"]}]}
@@ -81,6 +82,7 @@ async def test_save_place_finds_photos_itself_when_none_given(mcp):
 
 @respx.mock
 async def test_save_place_still_saves_when_photo_lookup_fails(mcp):
+    respx.post(f"{BASE}/api/locations/check-duplicates/").mock(return_value=httpx.Response(200, json={"matches": []}))
     respx.get(f"{BASE}/api/places/search/").mock(return_value=httpx.Response(500, text="boom"))
     route = respx.post(f"{BASE}/api/locations/quick-add/").mock(
         return_value=httpx.Response(201, json={"id": "l1", "name": "X"})
@@ -91,6 +93,7 @@ async def test_save_place_still_saves_when_photo_lookup_fails(mcp):
 
 @respx.mock
 async def test_create_location_reuses_a_matching_existing_category(mcp):
+    respx.post(f"{BASE}/api/locations/check-duplicates/").mock(return_value=httpx.Response(200, json={"matches": []}))
     respx.get(f"{BASE}/api/categories/").mock(
         return_value=httpx.Response(200, json=[{"name": "hiking area", "display_name": "Hiking Area"}])
     )
@@ -104,6 +107,7 @@ async def test_create_location_reuses_a_matching_existing_category(mcp):
 
 @respx.mock
 async def test_create_location_makes_a_new_category_when_none_fits(mcp):
+    respx.post(f"{BASE}/api/locations/check-duplicates/").mock(return_value=httpx.Response(200, json={"matches": []}))
     respx.get(f"{BASE}/api/categories/").mock(
         return_value=httpx.Response(200, json=[{"name": "museum", "display_name": "Museum"}])
     )
@@ -120,3 +124,40 @@ async def test_a_plan_can_be_made_by_day_count_alone(mcp):
     await mcp.tool("create_collection", {"name": "Iceland", "type": "plan", "day_count": 5})
     body = json.loads(route.calls.last.request.content)
     assert body["type"] == "trip" and body["day_count"] == 5 and "start_date" not in body
+
+
+@respx.mock
+async def test_create_location_reuses_a_saved_place_and_adds_it_to_the_collection(mcp):
+    respx.post(f"{BASE}/api/locations/check-duplicates/").mock(
+        return_value=httpx.Response(
+            200, json={"matches": [{"id": "old1", "name": "Seneca Rocks", "score": 0.97, "reasons": ["similar_name"]}]}
+        )
+    )
+    link = respx.post(f"{BASE}/api/locations/old1/collections/c1/").mock(
+        return_value=httpx.Response(200, json={"linked": True})
+    )
+    respx.get(f"{BASE}/api/locations/old1/").mock(
+        return_value=httpx.Response(200, json={"id": "old1", "name": "Seneca Rocks"})
+    )
+    create = respx.post(f"{BASE}/api/locations/")
+    out = data(
+        await mcp.tool(
+            "create_location", {"name": "Seneca Rocks", "latitude": 1, "longitude": 2, "collection_id": "c1"}
+        )
+    )
+    assert out["reused_existing"] is True and out["id"] == "old1"
+    assert link.called and not create.called
+
+
+@respx.mock
+async def test_a_merely_nearby_place_is_not_reused(mcp):
+    respx.post(f"{BASE}/api/locations/check-duplicates/").mock(
+        return_value=httpx.Response(
+            200, json={"matches": [{"id": "n1", "name": "Other", "score": 0.97, "reasons": ["nearby_coordinates"]}]}
+        )
+    )
+    create = respx.post(f"{BASE}/api/locations/").mock(
+        return_value=httpx.Response(201, json={"id": "new", "name": "X"})
+    )
+    out = data(await mcp.tool("create_location", {"name": "X", "latitude": 1, "longitude": 2}))
+    assert create.called and not out.get("reused_existing")

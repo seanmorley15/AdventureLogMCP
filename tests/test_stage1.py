@@ -39,6 +39,7 @@ async def test_create_collection_maps_plan_to_trip_and_repeats_with_the_same_id(
 
 @respx.mock
 async def test_create_location_sends_category_as_object_and_collection_list(mcp):
+    respx.post(f"{BASE}/api/locations/check-duplicates/").mock(return_value=httpx.Response(200, json={"matches": []}))
     route = respx.post(f"{BASE}/api/locations/").mock(
         return_value=httpx.Response(201, json={"id": "l1", "name": "Viewpoint", "category": {"display_name": "Nature"}})
     )

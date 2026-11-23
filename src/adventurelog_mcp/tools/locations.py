@@ -21,6 +21,38 @@ class VisitInput(BaseModel):
     notes: str | None = None
 
 
+async def _existing_location(a, name: str, latitude: float, longitude: float, address: str | None) -> dict | None:
+    """The user's own saved location that is clearly this same place: a similar name AND close by.
+    Merely being near a different place is not enough, so neighbours are never merged. Best effort."""
+    try:
+        data = await a.post(
+            "/api/locations/check-duplicates/",
+            json={"name": name, "latitude": latitude, "longitude": longitude, "location": address},
+        )
+    except ToolError:
+        return None
+    for m in data.get("matches", []):
+        reasons = m.get("reasons") or []
+        if "similar_name" in reasons and (m.get("score") or 0) >= 0.9:
+            return m
+    return None
+
+
+async def _reuse(a, match: dict, collection_id: str | None, visits: list | None = None) -> dict:
+    """Return the existing location (added to the collection, with any visits, when asked) instead of a copy."""
+    if collection_id:
+        await a.post(f"/api/locations/{match['id']}/collections/{collection_id}/")
+    for v in visits or []:
+        fields = {k: v.get(k) for k in ("start_date", "end_date", "notes")}
+        await a.post("/api/visits/", json=a.create_body("visit", location=match["id"], **fields))
+    data = await a.get(f"/api/locations/{match['id']}/")
+    out = shaping.location_full(data)
+    out["reused_existing"] = True
+    if collection_id:
+        out["added_to_collection"] = collection_id
+    return out
+
+
 async def _photos_for_place(a, place_id: str, name: str, address: str | None) -> list[str] | None:
     """Best effort: the place's picture addresses, found by searching again. Never blocks the save."""
     try:
@@ -143,11 +175,18 @@ def register(mcp: MCPServer) -> None:
         visits: Annotated[
             list[VisitInput] | None, Field(description="Past or planned visits. Omit for a wishlist location")
         ] = None,
+        allow_duplicate: Annotated[
+            bool, Field(description="Only if the user wants a second copy of a place they already saved")
+        ] = False,
     ) -> dict:
         """Save a new location. Leave `address` out and AdventureLog
         fills it in as "City, Region, US". Coordinates are what put it on the map; if you only have a name, use
-        search_places first to get them. Safe to repeat: the identical call returns the existing location."""
+        search_places first to get them. If the user already has this place saved it is reused (returned with
+        `reused_existing: true`, and added to `collection_id` and given the `visits`) instead of duplicated.
+        Safe to repeat: the identical call returns the existing location."""
         a = api(ctx)
+        if not allow_duplicate and (match := await _existing_location(a, name, latitude, longitude, address)):
+            return await _reuse(a, match, collection_id, [v.model_dump(exclude_none=True) for v in visits or []])
         fields: dict[str, Any] = {
             "name": name,
             "latitude": latitude,
@@ -194,12 +233,21 @@ def register(mcp: MCPServer) -> None:
             list[str] | None,
             Field(description="`photos` addresses from search_places results, to import as the location's pictures"),
         ] = None,
+        allow_duplicate: Annotated[
+            bool, Field(description="Only if the user wants a second copy of a place they already saved")
+        ] = False,
     ) -> dict:
         """Save a result from search_places as a location, the way the map's "add" button does (imports details
         and pictures: the place's own photos are fetched automatically when `photos` is left out).
-        Not safe to repeat: run check_duplicate_locations first.
+        If the user already saved this
+        place it is reused (`reused_existing: true`) and added to the collection instead of duplicated.
         To add other pictures afterwards use find_images and add_images."""
         a = api(ctx)
+        if not allow_duplicate and (match := await _existing_location(a, name, latitude, longitude, address)):
+            out = await _reuse(a, match, collection_id)
+            if itinerary_date:
+                out["note"] = "Already saved, so it was reused. Use schedule_item to put it on a day."
+            return out
         if place_id and not photos:
             photos = await _photos_for_place(a, place_id, name, address)
         body = {
