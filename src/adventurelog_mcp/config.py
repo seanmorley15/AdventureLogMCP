@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # Sent as the `Origin` header. AdventureLog's web proxy refuses multipart and body-less writes
     # (DELETE) unless Origin equals the site's own address, so set this to your SITE_URL.
     adventurelog_public_url: str | None = None
-    # Fallback key for stdio and single-user setups. HTTP clients send their own.
+    # Key for the stdio transport only (one person's own process). Over HTTP it is ignored: every client sends its own.
     adventurelog_api_key: str | None = None
 
     mcp_host: str = "0.0.0.0"

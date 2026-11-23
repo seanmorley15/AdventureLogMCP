@@ -196,6 +196,8 @@ def place(p: dict) -> dict:
             "review_count": p.get("review_count"),
             "website": p.get("website"),
             "description": clip(p.get("description"), 300),
+            # Up to 3 picture addresses: pass them to save_place_as_location(photos=...) or add_images.
+            "photos": (p.get("photos") or [])[:3],
         }
     )
 

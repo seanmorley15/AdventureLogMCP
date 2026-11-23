@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from .. import shaping
 from ..auth import api
-from ._common import CREATE, CREATE_NEW, PAGE_SIZE, READ_ONLY
+from ._common import CREATE, CREATE_NEW, PAGE_SIZE, READ_ONLY, category_fields
 
 
 class VisitInput(BaseModel):
@@ -134,8 +134,7 @@ def register(mcp: MCPServer) -> None:
             "longitude": longitude,
             "location": address,
             "description": description,
-            # POST /api/locations/ wants an object here (quick-add takes a bare name).
-            "category": {"name": category.strip().lower(), "display_name": category.strip()} if category else None,
+            "category": category_fields(category) if category else None,
             "tags": tags,
             "rating": rating,
             "link": link,
@@ -154,20 +153,30 @@ def register(mcp: MCPServer) -> None:
         latitude: Annotated[float, Field(ge=-90, le=90)],
         longitude: Annotated[float, Field(ge=-180, le=180)],
         place_id: Annotated[
-            str | None, Field(description="place_id from search_places; lets AdventureLog import photos")
+            str | None, Field(description="place_id from search_places; lets AdventureLog import details")
         ] = None,
         address: str | None = None,
-        description: str | None = None,
+        description: Annotated[
+            str | None, Field(description="Your own text. It is kept instead of the description imported for the place")
+        ] = None,
         website: str | None = None,
         rating: Annotated[float | None, Field(ge=0, le=5)] = None,
-        category: str | None = None,
+        category: Annotated[
+            str | None, Field(description="Category name; created if the user has none by that name")
+        ] = None,
         collection_id: Annotated[str | None, Field(description="Add it to this collection")] = None,
         itinerary_date: Annotated[
             str | None, Field(description="YYYY-MM-DD: also put it on this day of a dated collection")
         ] = None,
+        photos: Annotated[
+            list[str] | None,
+            Field(description="`photos` addresses from search_places results, to import as the location's pictures"),
+        ] = None,
     ) -> dict:
-        """Save a result from search_places as a location, the way the map's "add" button does (imports photos
-        and details). Not safe to repeat: run check_duplicate_locations first."""
+        """Save a result from search_places as a location, the way the map's "add" button does (imports details
+        and, when `photos` are given, pictures). Not safe to repeat: run check_duplicate_locations first.
+        To add other pictures afterwards use find_images and add_images."""
+        a = api(ctx)
         body = {
             "name": name,
             "latitude": latitude,
@@ -177,12 +186,21 @@ def register(mcp: MCPServer) -> None:
             "description": description,
             "website": website,
             "rating": rating,
-            "category": category,
+            "category": category_fields(category) if category else None,
             "collection": collection_id,
             "itinerary_date": itinerary_date,
+            "photos": photos,
         }
-        data = await api(ctx).post("/api/locations/quick-add/", json={k: v for k, v in body.items() if v is not None})
-        return shaping.location_full(data)
+        data = await a.post("/api/locations/quick-add/", json={k: v for k, v in body.items() if v is not None})
+        # AdventureLog replaces the caller's description with the one it fetched for the place_id. The caller's
+        # own words should win, so write them back.
+        if description and data.get("description") != description:
+            data = {**data, **await a.patch(f"/api/locations/{data['id']}/", json={"description": description})}
+        shaped = shaping.location_full(data)
+        imported = data.get("quick_add_image_import")
+        if isinstance(imported, dict):
+            shaped["photos_imported"] = imported.get("created_count", imported.get("imported"))
+        return shaping.compact(shaped)
 
     @mcp.tool(annotations=CREATE)
     async def log_visit(

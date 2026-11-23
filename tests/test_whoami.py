@@ -71,3 +71,27 @@ async def test_unreachable_server_is_reported_not_crashed(mcp):
 async def test_health(mcp):
     resp = await mcp.http.get("/health")
     assert resp.status_code == 200 and resp.json()["status"] == "ok"
+
+
+async def test_http_never_falls_back_to_a_server_side_key(mcp, monkeypatch):
+    """A key in the server's environment must not sign in callers who sent none."""
+    from adventurelog_mcp.config import get_settings
+
+    monkeypatch.setenv("ADVENTURELOG_API_KEY", "al_server_side")
+    get_settings.cache_clear()
+    with respx.mock:
+        account = respx.get(f"{BASE}/api/account/").mock(return_value=httpx.Response(200, json=ACCOUNT))
+        result = await mcp.tool("whoami", key=None)
+    assert result["isError"] is True and not account.called
+
+
+def test_stdio_uses_the_environment_key(monkeypatch):
+    from types import SimpleNamespace
+
+    from adventurelog_mcp.auth import api_key_for
+    from adventurelog_mcp.config import get_settings
+
+    monkeypatch.setenv("ADVENTURELOG_API_KEY", "al_mine")
+    get_settings.cache_clear()
+    stdio_ctx = SimpleNamespace(request_context=SimpleNamespace(request=None))  # no HTTP request over stdio
+    assert api_key_for(stdio_ctx) == "al_mine"

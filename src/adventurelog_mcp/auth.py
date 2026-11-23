@@ -2,7 +2,7 @@
 
 HTTP clients send it on the MCP request (``Authorization: Bearer al_...``, ``Authorization: Api-Key al_...``
 or ``X-API-Key``); it is forwarded to AdventureLog unchanged, so the server stores nothing and every
-caller acts as themselves. stdio and single-user setups fall back to ``ADVENTURELOG_API_KEY``.
+caller acts as themselves. Only stdio falls back to ``ADVENTURELOG_API_KEY``.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from .config import get_settings
 
 MISSING_KEY = (
     "No AdventureLog API key was sent. Create one in AdventureLog under Settings > Security > API Keys and "
-    "send it as 'Authorization: Bearer al_...' (or 'X-API-Key: al_...')."
+    "send it as 'Authorization: Bearer al_...' (or 'X-API-Key: al_...') from your MCP client settings."
 )
 
 
@@ -36,11 +36,18 @@ def key_from_headers(headers: Any) -> str | None:
 
 
 def api_key_for(ctx: Context) -> str:
+    """The key to act with.
+
+    Over HTTP it is only ever the key the client sent on this request. ``ADVENTURELOG_API_KEY`` is NOT used as
+    a fallback there: a server-side key would sign in anyone who can reach the port. It applies to stdio only,
+    where the server runs as one person's own process and there is no request to carry headers.
+    """
     request = getattr(ctx.request_context, "request", None)
     if request is not None:
         key = key_from_headers(request.headers)
         if key:
             return key
+        raise ToolError(MISSING_KEY)
     fallback = get_settings().adventurelog_api_key
     if fallback:
         return fallback

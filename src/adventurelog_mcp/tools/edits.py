@@ -11,6 +11,7 @@ from pydantic import Field
 
 from .. import shaping
 from ..auth import api
+from ._common import category_fields
 from .collection_items import ChecklistItemInput
 
 EDIT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -53,7 +54,7 @@ def register(mcp: MCPServer) -> None:
             location=address,
             latitude=latitude,
             longitude=longitude,
-            category={"name": category.strip().lower(), "display_name": category.strip()} if category else None,
+            category=category_fields(category) if category else None,
             tags=tags,
             rating=rating,
             link=link,

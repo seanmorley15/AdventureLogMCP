@@ -68,7 +68,7 @@ See [docker-compose.example.yml](docker-compose.example.yml). The MCP server mus
 | --- | --- | --- |
 | `ADVENTURELOG_URL` | `http://app:80` | Where the AdventureLog API lives |
 | `ADVENTURELOG_PUBLIC_URL` | same as above | Sent as `Origin`; set to your `SITE_URL` |
-| `ADVENTURELOG_API_KEY` | | Fallback key for stdio / single-user use |
+| `ADVENTURELOG_API_KEY` | | stdio only. Over HTTP it is ignored: each client sends its own key |
 | `MCP_HOST`, `MCP_PORT` | `0.0.0.0`, `8017` | HTTP bind |
 | `MCP_ALLOWED_HOSTS` | | Comma separated `Host` values to accept |
 | `MCP_ALLOW_DESTRUCTIVE` | `false` | Enables the delete tools |

@@ -3,6 +3,8 @@ services:
   mcp:
     image: ghcr.io/seanmorley15/adventurelog-mcp:latest
     container_name: adventurelog-mcp
+    ports:
+      - "8017:8017"
     restart: unless-stopped
     environment:
       ADVENTURELOG_URL: http://app:80
